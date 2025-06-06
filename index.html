@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نرم‌افزار حسابداری ساده</title>
+    <!-- Tailwind CSS CDN (برای استایل‌دهی آسان و واکنش‌گرا) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* استایل‌های سفارشی برای فونت و برخی تنظیمات اولیه */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* رنگ پس‌زمینه روشن */
+            direction: rtl; /* جهت متن راست به چپ */
+        }
+        /* استایل برای مخفی کردن اسکرول‌بار اما حفظ قابلیت اسکرول */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <!-- هدر برنامه -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-lg rounded-b-xl">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold tracking-tight">
+                <span class="inline-block transform -rotate-6 text-blue-200 opacity-80 mr-2">💰</span>
+                دفترچه حساب من
+            </h1>
+            <nav>
+                <a href="#add-transaction" class="bg-blue-500 hover:bg-blue-400 text-white py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    افزودن تراکنش جدید
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- محتوای اصلی برنامه -->
+    <main class="container mx-auto p-6 flex-grow">
+        <!-- بخش افزودن تراکنش -->
+        <section id="add-transaction" class="bg-white p-6 rounded-2xl shadow-xl mb-8 border border-blue-100">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3 border-blue-200">افزودن تراکنش</h2>
+            <form id="transaction-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="description" class="block text-gray-700 text-sm font-medium mb-2">توضیحات تراکنش:</label>
+                    <input type="text" id="description" required
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+                </div>
+                <div>
+                    <label for="amount" class="block text-gray-700 text-sm font-medium mb-2">مبلغ:</label>
+                    <input type="number" id="amount" required
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+                </div>
+                <div>
+                    <label for="type" class="block text-gray-700 text-sm font-medium mb-2">نوع تراکنش:</label>
+                    <select id="type" required
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 bg-white appearance-none pr-8">
+                        <option value="income">درآمد</option>
+                        <option value="expense">هزینه</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="date" class="block text-gray-700 text-sm font-medium mb-2">تاریخ:</label>
+                    <input type="date" id="date" required
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200">
+                </div>
+                <div class="md:col-span-2 flex justify-end mt-4">
+                    <button type="submit"
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center">
+                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12A9 9 0 113 12a9 9 0 0118 0z"></path></svg>
+                        افزودن تراکنش
+                    </button>
+                </div>
+            </form>
+            <!-- پیام وضعیت تراکنش -->
+            <div id="status-message" class="mt-4 p-3 text-center rounded-lg hidden"></div>
+        </section>
+
+        <!-- بخش نمایش تراکنش‌ها -->
+        <section class="bg-white p-6 rounded-2xl shadow-xl border border-blue-100">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3 border-blue-200">تراکنش‌های اخیر</h2>
+            <div class="overflow-x-auto no-scrollbar">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead class="bg-gray-100 border-b border-gray-200">
+                        <tr>
+                            <th class="py-3 px-4 text-right text-sm font-medium text-gray-600 uppercase tracking-wider rounded-tr-lg">توضیحات</th>
+                            <th class="py-3 px-4 text-right text-sm font-medium text-gray-600 uppercase tracking-wider">مبلغ</th>
+                            <th class="py-3 px-4 text-right text-sm font-medium text-gray-600 uppercase tracking-wider">نوع</th>
+                            <th class="py-3 px-4 text-right text-sm font-medium text-gray-600 uppercase tracking-wider">تاریخ</th>
+                            <th class="py-3 px-4 text-right text-sm font-medium text-gray-600 uppercase tracking-wider rounded-tl-lg">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-list" class="divide-y divide-gray-100">
+                        <!-- تراکنش‌ها در اینجا توسط جاوااسکریپت اضافه می‌شوند -->
+                    </tbody>
+                </table>
+            </div>
+            <!-- وضعیت کلی حساب -->
+            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-inner flex justify-between items-center">
+                <span class="text-lg font-bold text-gray-800">وضعیت فعلی حساب:</span>
+                <span id="current-balance" class="text-2xl font-extrabold text-blue-700">0 تومان</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- فوتر برنامه -->
+    <footer class="bg-gray-800 text-white p-4 text-center mt-8 rounded-t-xl shadow-inner">
+        <p class="text-sm">ساخته شده با ❤️ برای شما - &copy; 2024</p>
+    </footer>
+
+    <script>
+        // جاوااسکریپت برای مدیریت تراکنش‌ها
+        document.addEventListener('DOMContentLoaded', () => {
+            const transactionForm = document.getElementById('transaction-form');
+            const transactionList = document.getElementById('transaction-list');
+            const currentBalanceEl = document.getElementById('current-balance');
+            const statusMessage = document.getElementById('status-message');
+
+            let transactions = []; // آرایه‌ای برای ذخیره تراکنش‌ها
+
+            // تابع برای بارگذاری تراکنش‌ها از Local Storage (اگر وجود داشته باشد)
+            function loadTransactions() {
+                const storedTransactions = localStorage.getItem('transactions');
+                if (storedTransactions) {
+                    transactions = JSON.parse(storedTransactions);
+                    renderTransactions();
+                }
+            }
+
+            // تابع برای ذخیره تراکنش‌ها در Local Storage
+            function saveTransactions() {
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+            }
+
+            // تابع برای نمایش پیام وضعیت
+            function showStatusMessage(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = 'mt-4 p-3 text-center rounded-lg'; // ریست کردن کلاس‌ها
+
+                if (type === 'success') {
+                    statusMessage.classList.add('bg-green-100', 'text-green-800');
+                } else if (type === 'error') {
+                    statusMessage.classList.add('bg-red-100', 'text-red-800');
+                }
+                statusMessage.classList.remove('hidden');
+                // مخفی کردن پیام پس از چند ثانیه
+                setTimeout(() => {
+                    statusMessage.classList.add('hidden');
+                }, 3000);
+            }
+
+            // تابع برای رندر (نمایش) تراکنش‌ها در جدول
+            function renderTransactions() {
+                transactionList.innerHTML = ''; // پاک کردن لیست فعلی
+                let totalBalance = 0;
+
+                if (transactions.length === 0) {
+                    transactionList.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="py-4 px-4 text-center text-gray-500 italic">
+                                هنوز هیچ تراکنشی اضافه نشده است.
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                transactions.forEach((transaction, index) => {
+                    const row = document.createElement('tr');
+                    const amountClass = transaction.type === 'income' ? 'text-green-600' : 'text-red-600';
+                    const amountSign = transaction.type === 'income' ? '+' : '-';
+
+                    // محاسبه موجودی کلی
+                    if (transaction.type === 'income') {
+                        totalBalance += transaction.amount;
+                    } else {
+                        totalBalance -= transaction.amount;
+                    }
+
+                    row.innerHTML = `
+                        <td class="py-3 px-4 text-gray-800">${transaction.description}</td>
+                        <td class="py-3 px-4 ${amountClass} font-bold">${amountSign}${transaction.amount.toLocaleString()} تومان</td>
+                        <td class="py-3 px-4">
+                            <span class="px-3 py-1 rounded-full text-sm font-medium ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${transaction.type === 'income' ? 'درآمد' : 'هزینه'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-600">${transaction.date}</td>
+                        <td class="py-3 px-4">
+                            <button data-index="${index}" class="delete-btn bg-red-500 hover:bg-red-600 text-white py-1.5 px-3 rounded-lg text-sm transition duration-200 transform hover:scale-105">
+                                حذف
+                            </button>
+                        </td>
+                    `;
+                    transactionList.appendChild(row);
+                });
+
+                // به‌روزرسانی موجودی کلی
+                currentBalanceEl.textContent = `${totalBalance.toLocaleString()} تومان`;
+                currentBalanceEl.classList.remove('text-green-700', 'text-red-700', 'text-blue-700');
+                if (totalBalance > 0) {
+                    currentBalanceEl.classList.add('text-green-700');
+                } else if (totalBalance < 0) {
+                    currentBalanceEl.classList.add('text-red-700');
+                } else {
+                    currentBalanceEl.classList.add('text-blue-700');
+                }
+            }
+
+            // هندل کردن ارسال فرم
+            transactionForm.addEventListener('submit', (e) => {
+                e.preventDefault(); // جلوگیری از رفرش صفحه
+
+                const description = document.getElementById('description').value;
+                const amount = parseFloat(document.getElementById('amount').value);
+                const type = document.getElementById('type').value;
+                const date = document.getElementById('date').value;
+
+                if (description && !isNaN(amount) && amount > 0 && date) {
+                    const newTransaction = {
+                        description,
+                        amount,
+                        type,
+                        date
+                    };
+                    transactions.unshift(newTransaction); // افزودن به ابتدای آرایه
+                    saveTransactions();
+                    renderTransactions();
+                    transactionForm.reset(); // پاک کردن فرم
+                    showStatusMessage('تراکنش با موفقیت اضافه شد!', 'success');
+                } else {
+                    showStatusMessage('لطفاً تمام فیلدها را به درستی پر کنید.', 'error');
+                }
+            });
+
+            // هندل کردن حذف تراکنش
+            transactionList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-btn')) {
+                    const indexToDelete = parseInt(e.target.dataset.index);
+                    // نمایش یک پیام تایید سفارشی به جای alert()
+                    const confirmDelete = createConfirmationDialog('آیا مطمئن هستید که می‌خواهید این تراکنش را حذف کنید؟');
+                    confirmDelete.then(result => {
+                        if (result) {
+                            transactions.splice(indexToDelete, 1); // حذف تراکنش از آرایه
+                            saveTransactions();
+                            renderTransactions();
+                            showStatusMessage('تراکنش حذف شد.', 'success');
+                        }
+                    });
+                }
+            });
+
+            // تابع برای ساخت دیالوگ تایید سفارشی
+            function createConfirmationDialog(message) {
+                return new Promise((resolve) => {
+                    const modalOverlay = document.createElement('div');
+                    modalOverlay.className = 'fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50';
+                    modalOverlay.innerHTML = `
+                        <div class="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 text-center transform scale-95 transition-transform duration-300">
+                            <p class="text-xl font-semibold mb-6 text-gray-800">${message}</p>
+                            <div class="flex justify-center gap-4">
+                                <button id="confirm-yes" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">بله</button>
+                                <button id="confirm-no" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">خیر</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modalOverlay);
+
+                    document.getElementById('confirm-yes').addEventListener('click', () => {
+                        modalOverlay.remove();
+                        resolve(true);
+                    });
+
+                    document.getElementById('confirm-no').addEventListener('click', () => {
+                        modalOverlay.remove();
+                        resolve(false);
+                    });
+                });
+            }
+
+            // بارگذاری تراکنش‌ها هنگام شروع برنامه
+            loadTransactions();
+        });
+    </script>
+</body>
+</html>
