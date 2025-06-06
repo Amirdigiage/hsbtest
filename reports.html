@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش‌های حسابداری</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            direction: rtl;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <!-- هدر برنامه -->
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 shadow-lg rounded-b-xl">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold tracking-tight">
+                <span class="inline-block transform -rotate-6 text-blue-200 opacity-80 mr-2">📊</span>
+                گزارش‌های دفترچه حساب
+            </h1>
+            <nav class="space-x-4 space-x-reverse">
+                <a href="index.html" class="bg-blue-500 hover:bg-blue-400 text-white py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    خانه (تراکنش‌ها)
+                </a>
+                <a href="reports.html" class="bg-blue-700 text-white py-2 px-4 rounded-lg shadow-md">
+                    گزارش‌ها
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- محتوای اصلی صفحه گزارش‌ها -->
+    <main class="container mx-auto p-6 flex-grow flex items-center justify-center">
+        <section class="bg-white p-8 rounded-2xl shadow-xl border border-blue-100 max-w-2xl text-center">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-6">به زودی: گزارش‌های جامع مالی!</h2>
+            <p class="text-gray-600 text-lg mb-8">
+                در این بخش، می‌توانید گزارش‌های مالی مفصل از تراکنش‌های خود را مشاهده کنید.
+                گزارش‌های درآمد، هزینه، ترازنامه و نمودارهای تحلیلی به زودی در اینجا در دسترس خواهند بود.
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="index.html" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center">
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m0 0l-7 7m7-7v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    بازگشت به خانه
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- فوتر برنامه -->
+    <footer class="bg-gray-800 text-white p-4 text-center mt-8 rounded-t-xl shadow-inner">
+        <p class="text-sm">ساخته شده با ❤️ برای شما - &copy; 2024</p>
+    </footer>
+</body>
+</html>
