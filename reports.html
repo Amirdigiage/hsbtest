@@ -12,7 +12,53 @@
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
             direction: rtl;
+            overflow-x: hidden; /* جلوگیری از اسکرول افقی در اثر انیمیشن‌ها */
         }
+
+        /* انیمیشن محو شدن و کمی حرکت به سمت بالا */
+        @keyframes fadeInSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeInSlideUp {
+            animation: fadeInSlideUp 0.8s ease-out forwards;
+        }
+
+        /* انیمیشن تپش (pulse) برای متن */
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.03);
+                opacity: 0.9;
+            }
+        }
+        .animate-pulse-slow {
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        /* انیمیشن نقاط در حال بارگذاری */
+        @keyframes dot-pulse {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1.0);
+            }
+        }
+        .dot:nth-child(1) { animation: dot-pulse 1.2s infinite ease-in-out; }
+        .dot:nth-child(2) { animation: dot-pulse 1.2s infinite ease-in-out 0.16s; }
+        .dot:nth-child(3) { animation: dot-pulse 1.2s infinite ease-in-out 0.32s; }
+
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -36,14 +82,21 @@
 
     <!-- محتوای اصلی صفحه گزارش‌ها -->
     <main class="container mx-auto p-6 flex-grow flex items-center justify-center">
-        <section class="bg-white p-8 rounded-2xl shadow-xl border border-blue-100 max-w-2xl text-center">
-            <h2 class="text-3xl font-semibold text-gray-800 mb-6">به زودی: گزارش‌های جامع مالی!</h2>
+        <section class="bg-white p-8 rounded-2xl shadow-xl border border-blue-100 max-w-2xl w-full text-center animate-fadeInSlideUp">
+            <h2 class="text-3xl font-semibold text-gray-800 mb-6 animate-pulse-slow">به زودی: گزارش‌های جامع مالی!</h2>
             <p class="text-gray-600 text-lg mb-8">
                 در این بخش، می‌توانید گزارش‌های مالی مفصل از تراکنش‌های خود را مشاهده کنید.
                 گزارش‌های درآمد، هزینه، ترازنامه و نمودارهای تحلیلی به زودی در اینجا در دسترس خواهند بود.
             </p>
             <!-- مکانی برای نمایش تاریخ و زمان فعلی با جاوااسکریپت -->
             <div id="current-datetime" class="mt-6 text-gray-700 text-md font-medium"></div>
+
+            <!-- انیمیشن نقاط در حال بارگذاری -->
+            <div class="flex justify-center items-center mt-8 space-x-2 space-x-reverse">
+                <div class="dot w-3 h-3 bg-blue-500 rounded-full"></div>
+                <div class="dot w-3 h-3 bg-blue-500 rounded-full"></div>
+                <div class="dot w-3 h-3 bg-blue-500 rounded-full"></div>
+            </div>
 
             <div class="flex justify-center gap-4 mt-8">
                 <a href="index.html" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center">
