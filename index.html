@@ -3,24 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نرم‌افزار حسابداری ساده</title>
-    <!-- Tailwind CSS CDN (برای استایل‌دهی آسان و واکنش‌گرا) -->
+    <title>نرم‌افزار حسابداری (Supabase)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* استایل‌های سفارشی برای فونت و برخی تنظیمات اولیه */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* رنگ پس‌زمینه روشن */
-            direction: rtl; /* جهت متن راست به چپ */
+            background-color: #f0f4f8;
+            direction: rtl;
         }
-        /* استایل برای مخفی کردن اسکرول‌بار اما حفظ قابلیت اسکرول */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
         .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
+            -ms-overflow-style: none; /* IE and Edge */
             scrollbar-width: none;  /* Firefox */
+        }
+        /* Custom modal styles for confirmation dialog */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.3s ease-out;
+        }
+        .modal-content.open {
+            transform: scale(1);
         }
     </style>
 </head>
@@ -32,7 +57,6 @@
                 <span class="inline-block transform -rotate-6 text-blue-200 opacity-80 mr-2">💰</span>
                 دفترچه حساب من
             </h1>
-            <!-- ناوبری جدید شامل لینک به صفحه گزارش‌ها -->
             <nav class="space-x-4 space-x-reverse">
                 <a href="index.html" class="bg-blue-700 text-white py-2 px-4 rounded-lg shadow-md">
                     خانه (تراکنش‌ها)
@@ -100,7 +124,7 @@
                         </tr>
                     </thead>
                     <tbody id="transaction-list" class="divide-y divide-gray-100">
-                        <!-- تراکنش‌ها در اینجا توسط جاوااسکریپت اضافه می‌شوند -->
+                        <!-- تراکنش‌ها در اینجا توسط جاوااسکریپت از Supabase بارگذاری می‌شوند -->
                     </tbody>
                 </table>
             </div>
@@ -117,107 +141,288 @@
         <p class="text-sm">ساخته شده با ❤️ برای شما - &copy; 2024</p>
     </footer>
 
+    <!-- Supabase CDN (SDK) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // جاوااسکریپت برای مدیریت تراکنش‌ها
-        document.addEventListener('DOMContentLoaded', () => {
-            const transactionForm = document.getElementById('transaction-form');
-            const transactionList = document.getElementById('transaction-list');
-            const currentBalanceEl = document.getElementById('current-balance');
-            const statusMessage = document.getElementById('status-message');
+        // --- Supabase Configuration ---
+        // شما باید این مقادیر را از پروژه Supabase خود دریافت کنید
+        // به داشبورد Supabase خود (Project Settings -> API) مراجعه کنید
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // مثال: 'https://abcdefghijk.supabase.co'
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // مثال: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
 
-            let transactions = []; // آرایه‌ای برای ذخیره تراکنش‌ها
+        // Global variable for user ID, will be set after anonymous sign-in
+        let userId = null;
+        let transactions = []; // Array to store transactions fetched from Supabase
 
-            // تابع برای بارگذاری تراکنش‌ها از Local Storage (اگر وجود داشته باشد)
-            function loadTransactions() {
-                const storedTransactions = localStorage.getItem('transactions');
-                if (storedTransactions) {
-                    transactions = JSON.parse(storedTransactions);
-                    renderTransactions();
-                }
-            }
+        // --- Utility Functions (Modal and Status Message) ---
 
-            // تابع برای ذخیره تراکنش‌ها در Local Storage
-            function saveTransactions() {
-                localStorage.setItem('transactions', JSON.stringify(transactions));
-            }
+        /**
+         * Creates a custom confirmation dialog instead of using alert() or confirm().
+         * Returns a Promise that resolves to true if 'Yes' is clicked, false if 'No'.
+         */
+        function createConfirmationDialog(message) {
+            return new Promise((resolve) => {
+                const modalOverlay = document.createElement('div');
+                modalOverlay.className = 'modal-overlay transition-opacity duration-300 opacity-0';
+                modalOverlay.innerHTML = `
+                    <div class="modal-content transform scale-95 transition-transform duration-300">
+                        <p class="text-xl font-semibold mb-6 text-gray-800">${message}</p>
+                        <div class="flex justify-center gap-4">
+                            <button id="confirm-yes" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">بله</button>
+                            <button id="confirm-no" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">خیر</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modalOverlay);
 
-            // تابع برای نمایش پیام وضعیت
-            function showStatusMessage(message, type) {
-                statusMessage.textContent = message;
-                statusMessage.className = 'mt-4 p-3 text-center rounded-lg'; // ریست کردن کلاس‌ها
-
-                if (type === 'success') {
-                    statusMessage.classList.add('bg-green-100', 'text-green-800');
-                } else if (type === 'error') {
-                    statusMessage.classList.add('bg-red-100', 'text-red-800');
-                }
-                statusMessage.classList.remove('hidden');
-                // مخفی کردن پیام پس از چند ثانیه
+                // Animate modal in (small delay to allow CSS transition)
                 setTimeout(() => {
-                    statusMessage.classList.add('hidden');
-                }, 3000);
-            }
+                    modalOverlay.classList.remove('opacity-0');
+                    modalOverlay.querySelector('.modal-content').classList.add('open');
+                }, 10);
 
-            // تابع برای رندر (نمایش) تراکنش‌ها در جدول
-            function renderTransactions() {
-                transactionList.innerHTML = ''; // پاک کردن لیست فعلی
-                let totalBalance = 0;
-
-                if (transactions.length === 0) {
-                    transactionList.innerHTML = `
-                        <tr>
-                            <td colspan="5" class="py-4 px-4 text-center text-gray-500 italic">
-                                هنوز هیچ تراکنشی اضافه نشده است.
-                            </td>
-                        </tr>
-                    `;
-                }
-
-                transactions.forEach((transaction, index) => {
-                    const row = document.createElement('tr');
-                    const amountClass = transaction.type === 'income' ? 'text-green-600' : 'text-red-600';
-                    const amountSign = transaction.type === 'income' ? '+' : '-';
-
-                    // محاسبه موجودی کلی
-                    if (transaction.type === 'income') {
-                        totalBalance += transaction.amount;
-                    } else {
-                        totalBalance -= transaction.amount;
-                    }
-
-                    row.innerHTML = `
-                        <td class="py-3 px-4 text-gray-800">${transaction.description}</td>
-                        <td class="py-3 px-4 ${amountClass} font-bold">${amountSign}${transaction.amount.toLocaleString()} تومان</td>
-                        <td class="py-3 px-4">
-                            <span class="px-3 py-1 rounded-full text-sm font-medium ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                                ${transaction.type === 'income' ? 'درآمد' : 'هزینه'}
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 text-gray-600">${transaction.date}</td>
-                        <td class="py-3 px-4">
-                            <button data-index="${index}" class="delete-btn bg-red-500 hover:bg-red-600 text-white py-1.5 px-3 rounded-lg text-sm transition duration-200 transform hover:scale-105">
-                                حذف
-                            </button>
-                        </td>
-                    `;
-                    transactionList.appendChild(row);
+                document.getElementById('confirm-yes').addEventListener('click', () => {
+                    modalOverlay.remove();
+                    resolve(true);
                 });
 
-                // به‌روزرسانی موجودی کلی
-                currentBalanceEl.textContent = `${totalBalance.toLocaleString()} تومان`;
-                currentBalanceEl.classList.remove('text-green-700', 'text-red-700', 'text-blue-700');
-                if (totalBalance > 0) {
-                    currentBalanceEl.classList.add('text-green-700');
-                } else if (totalBalance < 0) {
-                    currentBalanceEl.classList.add('text-red-700');
-                } else {
-                    currentBalanceEl.classList.add('text-blue-700');
+                document.getElementById('confirm-no').addEventListener('click', () => {
+                    modalOverlay.remove();
+                    resolve(false);
+                });
+            });
+        }
+
+        /**
+         * Displays a status message to the user (success, error, info).
+         */
+        function showStatusMessage(message, type) {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.textContent = message;
+            statusMessage.className = 'mt-4 p-3 text-center rounded-lg'; // Reset classes for new message
+
+            if (type === 'success') {
+                statusMessage.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'info') {
+                statusMessage.classList.add('bg-blue-100', 'text-blue-800');
+            }
+            statusMessage.classList.remove('hidden'); // Ensure message is visible
+            // Hide message after a few seconds
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, 5000); // Display for 5 seconds
+        }
+
+        // --- Supabase Authentication and Data Operations ---
+
+        /**
+         * Signs in a user anonymously. This generates a unique user ID for persistence.
+         * The user ID is crucial for Row Level Security (RLS) to separate data between users.
+         */
+        async function signInAnon(supabaseClient) { // Pass supabaseClient as an argument
+            showStatusMessage('در حال اتصال به پایگاه داده و احراز هویت کاربر...', 'info');
+            try {
+                // Tries to get the current session first to avoid re-signing in
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+                if (sessionError) {
+                    console.error('Error getting session:', sessionError.message);
                 }
+
+                if (!session) {
+                    // If no active session, sign in anonymously
+                    const { data, error } = await supabaseClient.auth.signInAnonymously();
+                    if (error) throw error;
+                    userId = data.user.id;
+                    console.log('Signed in anonymously with userId:', userId);
+                    showStatusMessage('اتصال موفقیت‌آمیز! می‌توانید تراکنش‌ها را اضافه و حذف کنید.', 'success');
+                } else {
+                    userId = session.user.id;
+                    console.log('Session found, user ID:', userId);
+                    showStatusMessage('اتصال مجدد موفقیت‌آمیز به پایگاه داده.', 'success');
+                }
+            } catch (error) {
+                console.error('Error during anonymous sign-in:', error.message);
+                showStatusMessage(`خطا در اتصال به پایگاه داده: ${error.message}. لطفاً مقادیر SUPABASE_URL و SUPABASE_ANON_KEY را بررسی کنید.`, 'error');
+            }
+        }
+
+        /**
+         * Fetches transactions from the 'transactions' table in Supabase.
+         * RLS policies will ensure only the current user's transactions are returned.
+         */
+        async function loadTransactions(supabaseClient) { // Pass supabaseClient as an argument
+            if (!userId) {
+                console.log('User not authenticated, cannot load transactions.');
+                showStatusMessage('لطفاً منتظر بمانید تا اتصال به پایگاه داده برقرار شود.', 'info');
+                return;
+            }
+            showStatusMessage('در حال بارگذاری تراکنش‌ها...', 'info');
+            try {
+                // Select all columns from 'transactions' table for the current user, ordered by creation date
+                const { data, error } = await supabaseClient
+                    .from('transactions')
+                    .select('*')
+                    .eq('user_id', userId) // Filter by current user's ID
+                    .order('created_at', { ascending: false }); // Order by created_at (newest first)
+
+                if (error) {
+                    throw error;
+                }
+                transactions = data || []; // Update the local transactions array
+                renderTransactions(); // Re-render the UI with fetched data
+                showStatusMessage('تراکنش‌ها با موفقیت بارگذاری شدند.', 'success');
+            } catch (error) {
+                console.error('Error loading transactions:', error.message);
+                showStatusMessage(`خطا در بارگذاری تراکنش‌ها: ${error.message}. مطمئن شوید RLS را به درستی تنظیم کرده‌اید.`, 'error');
+            }
+        }
+
+        /**
+         * Adds a new transaction to the 'transactions' table in Supabase.
+         */
+        async function addTransaction(transaction, supabaseClient) { // Pass supabaseClient as an argument
+            if (!userId) {
+                showStatusMessage('خطا: کاربر احراز هویت نشده است. لطفاً صفحه را رفرش کنید.', 'error');
+                return;
+            }
+            showStatusMessage('در حال افزودن تراکنش...', 'info');
+            try {
+                // Insert new transaction data, including the current user's ID
+                const { data, error } = await supabaseClient
+                    .from('transactions')
+                    .insert([{ ...transaction, user_id: userId }])
+                    .select(); // Request the inserted row back (useful for getting the Supabase-generated ID)
+
+                if (error) {
+                    throw error;
+                }
+                // Add the newly inserted transaction (with its Supabase 'id') to the local array
+                transactions.unshift(data[0]);
+                renderTransactions(); // Re-render the UI
+                showStatusMessage('تراکنش با موفقیت اضافه شد!', 'success');
+            } catch (error) {
+                console.error('Error adding transaction:', error.message);
+                showStatusMessage(`خطا در افزودن تراکنش: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Deletes a transaction from the 'transactions' table in Supabase by its unique ID.
+         */
+        async function deleteTransaction(transactionId, localIndex, supabaseClient) { // Pass supabaseClient as an argument
+            showStatusMessage('در حال حذف تراکنش...', 'info');
+            try {
+                // Delete the transaction matching the ID and current user's ID (for RLS)
+                const { error } = await supabaseClient
+                    .from('transactions')
+                    .delete()
+                    .eq('id', transactionId)
+                    .eq('user_id', userId); // Ensure user can only delete their own transactions
+
+                if (error) {
+                    throw error;
+                }
+                // Remove the transaction from the local array
+                transactions.splice(localIndex, 1);
+                renderTransactions(); // Re-render the UI
+                showStatusMessage('تراکنش با موفقیت حذف شد.', 'success');
+            } catch (error) {
+                console.error('Error deleting transaction:', error.message);
+                showStatusMessage(`خطا در حذف تراکنش: ${error.message}`, 'error');
+            }
+        }
+
+        // --- UI Rendering ---
+
+        /**
+         * Renders the transactions list in the HTML table and updates the balance.
+         */
+        function renderTransactions() {
+            const transactionList = document.getElementById('transaction-list');
+            const currentBalanceEl = document.getElementById('current-balance');
+            transactionList.innerHTML = ''; // Clear existing table rows
+            let totalBalance = 0;
+
+            if (transactions.length === 0) {
+                transactionList.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-4 px-4 text-center text-gray-500 italic">
+                            هنوز هیچ تراکنشی اضافه نشده است.
+                        </td>
+                    </tr>
+                `;
             }
 
-            // هندل کردن ارسال فرم
-            transactionForm.addEventListener('submit', (e) => {
-                e.preventDefault(); // جلوگیری از رفرش صفحه
+            transactions.forEach((transaction, index) => {
+                const row = document.createElement('tr');
+                // Determine text color and sign based on transaction type
+                const amountClass = transaction.type === 'income' ? 'text-green-600' : 'text-red-600';
+                const amountSign = transaction.type === 'income' ? '+' : '-';
+
+                // Calculate total balance
+                if (transaction.type === 'income') {
+                    totalBalance += transaction.amount;
+                } else {
+                    totalBalance -= transaction.amount;
+                }
+
+                // Populate row with transaction data
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-gray-800">${transaction.description}</td>
+                    <td class="py-3 px-4 ${amountClass} font-bold">${amountSign}${transaction.amount.toLocaleString()} تومان</td>
+                    <td class="py-3 px-4">
+                        <span class="px-3 py-1 rounded-full text-sm font-medium ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${transaction.type === 'income' ? 'درآمد' : 'هزینه'}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600">${new Date(transaction.date).toLocaleDateString('fa-IR')}</td>
+                    <td class="py-3 px-4">
+                        <button data-id="${transaction.id}" data-index="${index}" class="delete-btn bg-red-500 hover:bg-red-600 text-white py-1.5 px-3 rounded-lg text-sm transition duration-200 transform hover:scale-105">
+                            حذف
+                        </button>
+                    </td>
+                `;
+                transactionList.appendChild(row);
+            });
+
+            // Update the displayed total balance
+            currentBalanceEl.textContent = `${totalBalance.toLocaleString()} تومان`;
+            // Change color of balance based on positive/negative value
+            currentBalanceEl.classList.remove('text-green-700', 'text-red-700', 'text-blue-700');
+            if (totalBalance > 0) {
+                currentBalanceEl.classList.add('text-green-700');
+            } else if (totalBalance < 0) {
+                currentBalanceEl.classList.add('text-red-700');
+            } else {
+                currentBalanceEl.classList.add('text-blue-700');
+            }
+        }
+
+        // --- Event Listeners and Initial App Load ---
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize Supabase client inside DOMContentLoaded
+            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            const transactionForm = document.getElementById('transaction-form');
+            const transactionList = document.getElementById('transaction-list');
+
+            // 1. Sign in anonymously first to get a user ID
+            await signInAnon(supabase); // Pass supabase client
+
+            // 2. Load transactions for the authenticated user
+            if (userId) {
+                await loadTransactions(supabase); // Pass supabase client
+            } else {
+                showStatusMessage('خطا در احراز هویت اولیه. لطفا اتصال به اینترنت خود را بررسی کرده و صفحه را رفرش کنید.', 'error');
+            }
+
+            // Event listener for adding new transactions
+            transactionForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Prevent default form submission (page reload)
 
                 const description = document.getElementById('description').value;
                 const amount = parseFloat(document.getElementById('amount').value);
@@ -231,63 +436,36 @@
                         type,
                         date
                     };
-                    transactions.unshift(newTransaction); // افزودن به ابتدای آرایه
-                    saveTransactions();
-                    renderTransactions();
-                    transactionForm.reset(); // پاک کردن فرم
-                    showStatusMessage('تراکنش با موفقیت اضافه شد!', 'success');
+                    await addTransaction(newTransaction, supabase); // Pass supabase client
+                    transactionForm.reset(); // Clear the form
                 } else {
                     showStatusMessage('لطفاً تمام فیلدها را به درستی پر کنید.', 'error');
                 }
             });
 
-            // هندل کردن حذف تراکنش
-            transactionList.addEventListener('click', (e) => {
+            // Event listener for deleting transactions (event delegation)
+            transactionList.addEventListener('click', async (e) => {
+                // Check if the clicked element is a delete button
                 if (e.target.classList.contains('delete-btn')) {
-                    const indexToDelete = parseInt(e.target.dataset.index);
-                    // نمایش یک پیام تایید سفارشی به جای alert()
-                    const confirmDelete = createConfirmationDialog('آیا مطمئن هستید که می‌خواهید این تراکنش را حذف کنید؟');
-                    confirmDelete.then(result => {
-                        if (result) {
-                            transactions.splice(indexToDelete, 1); // حذف تراکنش از آرایه
-                            saveTransactions();
-                            renderTransactions();
-                            showStatusMessage('تراکنش حذف شد.', 'success');
-                        }
-                    });
+                    const transactionId = e.target.dataset.id; // Get Supabase ID from data-id attribute
+                    const localIndex = parseInt(e.target.dataset.index); // Get local array index
+
+                    const confirmDelete = await createConfirmationDialog('آیا مطمئن هستید که می‌خواهید این تراکنش را حذف کنید؟');
+                    if (confirmDelete) {
+                        await deleteTransaction(transactionId, localIndex, supabase); // Pass supabase client
+                    }
                 }
             });
 
-            // تابع برای ساخت دیالوگ تایید سفارشی
-            function createConfirmationDialog(message) {
-                return new Promise((resolve) => {
-                    const modalOverlay = document.createElement('div');
-                    modalOverlay.className = 'fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50';
-                    modalOverlay.innerHTML = `
-                        <div class="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 text-center transform scale-95 transition-transform duration-300">
-                            <p class="text-xl font-semibold mb-6 text-gray-800">${message}</p>
-                            <div class="flex justify-center gap-4">
-                                <button id="confirm-yes" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">بله</button>
-                                <button id="confirm-no" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">خیر</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(modalOverlay);
-
-                    document.getElementById('confirm-yes').addEventListener('click', () => {
-                        modalOverlay.remove();
-                        resolve(true);
-                    });
-
-                    document.getElementById('confirm-no').addEventListener('click', () => {
-                        modalOverlay.remove();
-                        resolve(false);
-                    });
-                });
-            }
-
-            // بارگذاری تراکنش‌ها هنگام شروع برنامه
-            loadTransactions();
+            // --- Keyboard Shortcut for Reports Page ---
+            // Listens for 'Ctrl + R' (Windows/Linux) or 'Cmd + R' (macOS) to navigate to reports.html
+            document.addEventListener('keydown', (e) => {
+                // Check if 'r' key is pressed AND either Ctrl or Meta (Command on Mac) key is down
+                if (e.key === 'r' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault(); // Prevent default browser refresh action
+                    window.location.href = 'reports.html'; // Navigate to the reports page
+                }
+            });
         });
     </script>
 </body>
